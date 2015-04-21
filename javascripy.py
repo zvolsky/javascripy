@@ -44,17 +44,40 @@ import sys
 
 EXT_js = 'js'          # default extension for javascript files
 EXT_jspy = 'jspy'      # default extension for javascripy files
+LINE_SEP = ''          # empty=auto | \n | \r\n | \r | LINUX|OSX|LF | MS|DOS|WINDOWS|CRLF | OS9|CR
 
-
-
+if LINE_SEP:
+    linesep_trans = dict(linux=1, osx=1, lf=1, ms=2, dos=2, windows=2, crlf=2, os9=3, cr=3)
+    linesep_idx = linesep_trans.get(lower(LINE_SEP))
+    if linesep_idx:
+        LINE_SEP = ['\n', '\r\n', '\r'][linesep_idx]
+else:
+    LINE_SEP = os.linesep
 
 #----------------------------------------------------------------------------------------------------------------------
 def compile_string_pj(strin):
     return strin
 
-def compile_string_jp(strin):
-    return strin
+def compile_string_jp(src):
+    delimiters = '"'+"'/"
+    res = ''
+    srclines = src.splitlines()
+    for srcline in srclines:
+        srcline = srcline.strip()
+        chars = ''
+        delimiter = ''
+        for char in srcline:
+            if not delimiter and char in ' \t':
+                continue
+            chars += char
+            if char==delimiter:
+                delimiter = ''
+            elif char in delimiters:
+                delimiter = char
+        res += chars + LINE_SEP
+    return res
 
+#----------------------------------------------------------------------------------------------------------------------
 def compile_file_pj(pathname):
     '''compile file from javascripy (with or without .jspy extension) to javascript'''
     compile_file(pathname, EXT_jspy, EXT_js, compile_string_pj)
@@ -91,22 +114,24 @@ def compile(pathname_in, pathname_out, compile_func=compile_string_pj):
 
 def couple(dir='.', ext_js=EXT_js, ext_jspy=EXT_jspy):
     '''create missing pair files for all files inside the directory'''
-    compile_dir_jp(dir, rewrite=False)
-    compile_dir_pj(dir, rewrite=False)
+    cnt = compile_dir_jp(dir, rewrite=False)
+    cnt += compile_dir_pj(dir, rewrite=False)
+    return cnt
 
 def compile_dir_jp(dir='.', ext_js=EXT_js, ext_jspy=EXT_jspy, rewrite=True):
     '''compile all files in directory from javascript to javascripy'''
-    compile_dir(dir, extin=ext_js, extout=ext_jspy, compile_func=compile_string_jp, rewrite=rewrite)
+    return compile_dir(dir, extin=ext_js, extout=ext_jspy, compile_func=compile_string_jp, rewrite=rewrite)
     
 def compile_dir_pj(dir='.', ext_jspy=EXT_jspy, ext_js=EXT_js, rewrite=True):
     '''compile all files in directory from javascripy to javascript'''
-    compile_dir(dir, extin=ext_jspy, extout=ext_js, compile_func=compile_string_pj, rewrite=rewrite)
+    return compile_dir(dir, extin=ext_jspy, extout=ext_js, compile_func=compile_string_pj, rewrite=rewrite)
 
 def compile_dir(dir='.', extin=EXT_jspy, extout=EXT_js, compile_func=compile_string_pj, rewrite=True):
     '''compile all files in directory there or back (by default from javascripy to javascript)'''
     if extin==extout:
         raise ValueError
     filenames = os.listdir(dir)
+    cnt = 0
     for filename in filenames:
         if extin and filename.endswith('.' + extin) or not extin and not '.' in filename:
             targetstem = filename.split('.', 1)[0]
@@ -118,6 +143,8 @@ def compile_dir(dir='.', extin=EXT_jspy, extout=EXT_js, compile_func=compile_str
                 if os.path.isfile(pathname):
                     os.remove(pathname)
                 compile_file(pathstem, extin=extin, extout=extout, compile_func=compile_func)
+                cnt += 1
+    return cnt
 
 def fix_ext(ext):
     if ext[0] != '.':
@@ -146,4 +173,8 @@ if __name__=='__main__':
                 if fsname[-len(ext_jspy):]==ext_jspy:
                     pj(fsname)                  # compile .jspy -> .js
         elif os.path.isdir(fsname):
-            couple(fsname)                      # create all missing pair files in directory
+            cnt = couple(fsname)                      # create all missing pair files in directory
+            if cnt>0:
+                print '(Java)script files (%s) with pair extensions (.js-.jspy) were created.' % cnt
+            elif len(sys.argv)<=1:
+                print 'Nothing to do. %s --help for more info.' % sys.argv[0]
