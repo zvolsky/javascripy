@@ -72,26 +72,31 @@ def compile_string_jp(src):
             if multiline_comment:
                 chars += char
                 if char=='/' and chars[-2:]=='*/':
+                    chars += ' '
                     multiline_comment = False
             else:
                 if not delimiter and char in ' \t':
-                    spaces += 1 if char==' ' else 4
+                    if chars:
+                        spaces += 1 if char==' ' else 4
                     continue
                 if chars[-1:]=='/' and not delimiter in quotations and char in '*/':
                     if char=='*':
-                        delimiter = ''  # here can be improper understanded "/"
+                        delimiter = ''  # here can be false "/" as delimiter, but this is comment
                         multiline_comment = True
                         chars = chars[:-1] + spaces*' ' + '/'
                     else:
                         chars = chars[:-1] + srcline[srcline.find('//')-spaces:]
                         break
-                spaces = 0
                 chars += char
                 if char==delimiter:
                     delimiter = ''
-                elif char in quotations or char=='/' and chars[-1:] in tuple('=+-([{'):
-                    delimiter = char
-        res += chars + LINE_SEP
+                    spaces = 0
+                else:
+                    if char != '/':  # starting delimiter "/" (and operator "/" difficult to distinguish) will not clear spaces, because possibly it's not delimiter but comment
+                        spaces = 0
+                    if not delimiter and char in quotations or char=='/' and chars[-1:] in tuple('=+-([{'):
+                        delimiter = char
+        res += chars.rstrip() + LINE_SEP
     return res
 
 #----------------------------------------------------------------------------------------------------------------------

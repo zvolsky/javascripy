@@ -1,4 +1,4 @@
-// pro poptavka/poptavka.html view
+Q;  // pro poptavka/poptavka.html view
 // funkce volání ajaxu (protože obsahují templating {{..}}) jsou definovány ve view
 
 var koefDPH = 1.21;
