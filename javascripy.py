@@ -59,34 +59,38 @@ def compile_string_pj(strin):
     return strin
 
 def compile_string_jp(src):
-    quotations = '"'+"'"
+    quotations = ('"', "'")
     res = ''
     srclines = src.splitlines()
+    multiline_comment = False
     for srcline in srclines:
         srcline = srcline.strip()
         chars = ''
         delimiter = ''
-        multiline_comment = False
         spaces = 0
         for char in srcline:
-            if not delimiter and char in ' \t':
-                spaces += 1 if char==' ' else 4
-                continue
-            if chars[-1:]=='/' and char in '*/':
-                if char=='/':
-                    chars = chars[:-1] + srcline[srcline.find('//')-spaces:]
-                    break
-                else:
-                    multiline_comment = True
-                    # TODO: multiline comment?
-            spaces = 0
             if multiline_comment:
-                pass  # TODO: multiline comment?
-            chars += char
-            if char==delimiter:
-                delimiter = ''
-            elif char in quotations or char=='/' and chars[-1:] in tuple('=+-([{'):
-                delimiter = char
+                chars += char
+                if char=='/' and chars[-2:]=='*/':
+                    multiline_comment = False
+            else:
+                if not delimiter and char in ' \t':
+                    spaces += 1 if char==' ' else 4
+                    continue
+                if chars[-1:]=='/' and not delimiter in quotations and char in '*/':
+                    if char=='*':
+                        delimiter = ''  # here can be improper understanded "/"
+                        multiline_comment = True
+                        chars = chars[:-1] + spaces*' ' + '/'
+                    else:
+                        chars = chars[:-1] + srcline[srcline.find('//')-spaces:]
+                        break
+                spaces = 0
+                chars += char
+                if char==delimiter:
+                    delimiter = ''
+                elif char in quotations or char=='/' and chars[-1:] in tuple('=+-([{'):
+                    delimiter = char
         res += chars + LINE_SEP
     return res
 
