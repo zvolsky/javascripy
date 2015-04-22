@@ -59,20 +59,33 @@ def compile_string_pj(strin):
     return strin
 
 def compile_string_jp(src):
-    delimiters = '"'+"'/"
+    quotations = '"'+"'"
     res = ''
     srclines = src.splitlines()
     for srcline in srclines:
         srcline = srcline.strip()
         chars = ''
         delimiter = ''
+        multiline_comment = False
+        spaces = 0
         for char in srcline:
             if not delimiter and char in ' \t':
+                spaces += 1 if char==' ' else 4
                 continue
+            if chars[-1:]=='/' and char in '*/':
+                if char=='/':
+                    chars = chars[:-1] + srcline[srcline.find('//')-spaces:]
+                    break
+                else:
+                    multiline_comment = True
+                    # TODO: multiline comment?
+            spaces = 0
+            if multiline_comment:
+                pass  # TODO: multiline comment?
             chars += char
             if char==delimiter:
                 delimiter = ''
-            elif char in delimiters:
+            elif char in quotations or char=='/' and chars[-1:] in tuple('=+-([{'):
                 delimiter = char
         res += chars + LINE_SEP
     return res
